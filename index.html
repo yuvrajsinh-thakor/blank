@@ -1,1 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Climate Solver with AI Output</title>
+  <style>
+    /* General body and container styling */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Modern font */
+      margin: 0; /* Remove default body margin */
+      padding: 20px;
+      background: linear-gradient(135deg, #e0f2f7 0%, #c2e0f0 100%); /* Light gradient background */
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start; /* Align to top */
+      min-height: 100vh; /* Ensure full viewport height */
+      box-sizing: border-box; /* Include padding in element's total width and height */
+    }
 
+    /* Main content wrapper for responsiveness and centering */
+    .container {
+      max-width: 800px; /* Max width for content */
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 20px; /* Space between boxes */
+    }
+
+    /* Card-like box styling */
+    .box {
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px; /* More rounded corners */
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1); /* Softer, larger shadow */
+      border: 1px solid #e0e0e0; /* Subtle border */
+      transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .box:hover {
+      transform: translateY(-3px); /* Slight lift on hover */
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    /* Headings */
+    h2 {
+      margin-top: 0;
+      color: #007bff; /* Primary blue color */
+      font-size: 1.8em;
+      border-bottom: 2px solid #007bff; /* Underline effect */
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    /* Labels for results */
+    .label {
+      color: #555;
+      margin-top: 15px; /* More space above labels */
+      font-weight: 600; /* Bolder */
+      font-size: 1.1em;
+      border-left: 4px solid #007bff; /* Left border for emphasis */
+      padding-left: 10px;
+    }
+
+    /* Textarea styling */
+    textarea {
+      width: calc(100% - 20px); /* Adjust for padding/border */
+      height: 120px; /* Taller textarea */
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1em;
+      resize: vertical; /* Allow vertical resizing */
+      margin-bottom: 20px;
+      box-sizing: border-box; /* Include padding in element's total width and height */
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+    }
+
+    /* Button styling */
+    button {
+      background-color: #28a745; /* Green for action */
+      color: white;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.1s ease;
+      box-shadow: 0 4px 10px rgba(40, 167, 69, 0.2);
+    }
+
+    button:hover {
+      background-color: #218838;
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 5px rgba(40, 167, 69, 0.2);
+    }
+
+    /* Preformatted text (results) styling */
+    pre {
+      background: #e9f5ff; /* Lighter blue background for code/text blocks */
+      padding: 15px;
+      border-radius: 8px;
+      white-space: pre-wrap; /* Wrap text */
+      word-break: break-word; /* Break long words */
+      font-family: 'Consolas', 'Monaco', monospace; /* Monospaced font for code-like output */
+      font-size: 0.95em;
+      line-height: 1.6;
+      border: 1px solid #b3d9ff; /* Subtle border */
+      color: #004085; /* Darker blue text */
+    }
+
+    /* Hidden results div */
+    #result {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+    }
+
+    #result.show { /* Class added by JS to show the results */
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      body {
+        padding: 15px;
+      }
+      .box {
+        padding: 20px;
+      }
+      h2 {
+        font-size: 1.5em;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 1em;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="box">
+      <h2>🌍 Submit Climate Problem</h2>
+      <textarea id="problem" placeholder="Describe your issue and location (e.g., 'Heavy air pollution in Delhi due to vehicular emissions')." style="width:100%; height:100px;"></textarea>
+      <button onclick="submitProblem()">Get Solutions</button>
+    </div>
+
+    <div class="box" id="result" style="display:none;">
+      <h2>✅ Results</h2>
+      <div class="label">Category:</div>
+      <div id="category"></div>
+
+      <div class="label">Solution 1:</div>
+      <pre id="solution1"></pre>
+
+      <div class="label">Details:</div>
+      <pre id="details"></pre>
+
+      <div class="label">What *you* should do:</div>
+      <pre id="solution2"></pre>
+    </div>
+  </div>
+
+  <script>
+    const WEBHOOK_URL = 'https://hook.relay.app/api/v1/playbook/cmd8s79ao15ew0qm2glcshoxa/trigger/MZbiivKx0fGxhrH0kPUEZg';
+
+    async function submitProblem() {
+      const problem = document.getElementById('problem').value.trim();
+      if (!problem) {
+        alert('Please describe your climate problem.');
+        return;
+      }
+
+      const resultBox = document.getElementById('result');
+      resultBox.style.display = 'none'; // Hide immediately on new submission
+      resultBox.classList.remove('show'); // Remove animation class
+
+      // Optionally show a loading indicator
+      // document.getElementById('loadingSpinner').style.display = 'block';
+
+      const payload = { user_problem: problem };
+      try {
+        const res = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json(); // 🔥 Now use data directly
+
+        // Update content
+        document.getElementById('category').textContent = data.category || 'N/A';
+        document.getElementById('solution1').textContent = data.solution1 || 'N/A';
+
+        document.getElementById('details').textContent =
+          `Location: ${data.preciseLocation || 'N/A'}
+Authority: ${data.governmentAuthority || 'N/A'}
+Phone: ${data.contactNumber || 'N/A'}
+Toll-free: ${data.tollFreeNumber || 'N/A'}
+Email: ${data.email || 'N/A'}
+Website: ${data.website || 'N/A'}`;
+
+        document.getElementById('solution2').textContent = data.solution2 || 'N/A';
+
+        // Show result box with animation
+        resultBox.style.display = 'block';
+        setTimeout(() => resultBox.classList.add('show'), 10); // Small delay for display:block to take effect before transition
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        alert('Failed to get solutions. Please try again later.');
+      } finally {
+        // Hide loading indicator
+        // document.getElementById('loadingSpinner').style.display = 'none';
+      }
+    }
+  </script>
+
+</body>
+</html>
